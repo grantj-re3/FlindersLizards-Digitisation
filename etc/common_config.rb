@@ -16,7 +16,8 @@ module CommonConfig
   IN_SCAN_DIR     = "#{TOP_DIR}/src"
   OUT_DIR         = "#{TOP_DIR}/results"
 
-  FNAME_KEYS_CSV  = "#{OUT_DIR}/keys.csv"
+  FNAME_KEYS_CSV        = "#{OUT_DIR}/keys.csv"
   FNAME_KEY_OVERLAP_CSV = "#{OUT_DIR}/key_overlap.csv"
+  FNAME_KEY_GAP_CSV     = "#{OUT_DIR}/key_gap.csv"
 end
 

@@ -74,6 +74,10 @@ class ScannedFilesProcessor
       break if scanfile_count > MAX_SCANFILE_COUNT
       @target_fnames << f		# Process this scan-file
     }
+    if @target_fnames.length == 0
+      puts "Quitting! No files to process in folder #{IN_SCAN_DIR}"
+      exit 0
+    end
   end
 
   ############################################################################
@@ -261,6 +265,7 @@ class ScannedFilesProcessor
 
   ############################################################################
   def create_key_csv
+    puts "Creating key CSV file..."
     File.open(FNAME_KEYS_CSV, 'w'){|fh|
       fh.puts "key,date,trip,filename"		# CSV header line
       @fileparts_list.each{|p|
@@ -272,6 +277,7 @@ class ScannedFilesProcessor
 
   ############################################################################
   def create_key_overlap_report
+    puts "Creating key-overlap report..."
     File.open(FNAME_KEY_OVERLAP_CSV, 'w'){|fh|
       fh.puts "overlap_file1,overlap_file2"	# CSV header line
       @fileparts_list.each_with_index{|p1,i|
@@ -287,6 +293,64 @@ class ScannedFilesProcessor
   end
 
   ############################################################################
+  def create_key_gap_report
+    puts "Creating key-gap report..."
+    # Assumes @fileparts_list has been sorted numerically by KEY_BEGIN
+    range = nil; type = nil; files = nil
+    type_s = {
+      :normal	=> "",
+      :gap	=> "gap",
+      :overlap	=> "overlap",
+    }
+
+    File.open(FNAME_KEY_GAP_CSV, 'w'){|fh|
+      fh.puts "key_begin,key_end,gap_overlap,files"		# CSV header line
+
+      # We might start with a gap
+      if KEY_RANGE.begin < @fileparts_list.first[:key_range].begin
+        fh.puts "%d,%d,%s,%s" % [KEY_RANGE.begin, @fileparts_list.first[:key_range].begin-1, type_s[:gap], ""]
+      end
+
+      do_next = true
+      @fileparts_list.each_with_index{|p,i|
+        if i == 0
+          # First iteration: No processing
+
+	elsif range.include?(p[:key_range].begin) || range.include?(p[:key_range].end)
+          # Overlap: The range.end might be greater than current value
+          range = range.begin..p[:key_range].end if p[:key_range].end > range.end
+          type = :overlap
+          files << p[:whole]
+          do_next = false
+
+        elsif range.end+1 == p[:key_range].begin
+          # This range continues immediately from old range: Write old range line.
+          fh.puts "%d,%d,%s,%s" % [range.begin, range.end, type_s[type], files.join("|")]
+
+        else	# There must be a gap: Write old range line. Write gap line.
+          fh.puts "%d,%d,%s,%s" % [range.begin, range.end, type_s[type], files.join("|")]
+          fh.puts "%d,%d,%s,%s" % [range.end+1, p[:key_range].begin-1, type_s[:gap], ""]
+        end
+
+        if do_next
+          range = p[:key_range]
+          type = :normal
+          files = [ p[:whole] ]
+        end
+        do_next = true
+      }	# Each
+
+      # Write last range
+      fh.puts "%d,%d,%s,%s" % [range.begin, range.end, type_s[type], files.join("|")]
+
+      # We might end with a gap
+      if @fileparts_list.last[:key_range].end < KEY_RANGE.end
+        fh.puts "%d,%d,%s,%s" % [@fileparts_list.last[:key_range].end+1, KEY_RANGE.end, type_s[:gap], ""]
+      end
+    }	# File.open
+  end
+
+  ############################################################################
   def self.main
     puts "Process all scanned files"
     puts "========================="
@@ -298,7 +362,7 @@ class ScannedFilesProcessor
     f.create_key_csv
 
     f.create_key_overlap_report
-    #f.create_key_gaps_report
+    f.create_key_gap_report
     #f.create_trip_report
     #f.create_num_pages_report
   end
