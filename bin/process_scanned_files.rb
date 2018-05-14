@@ -10,14 +10,14 @@
 # - For each file in IN_SCAN_DIR
 #   * Process scan files
 #   * Create CSV file containing key,filename & other misc fields.
+#   * Report key-ranges of: gaps, single files & overlaps (ie. multiple files).
 #   * FUTURE: Report if expected number of pages differs from actual number. Include in CSV.
-#   * FUTURE: Report key_min, key_max, key_gaps (ie. ranges)
 #   * FUTURE: Report trip no by year? Eg. Must be different years?
 ##############################################################################
 # Add dirs to the library path
 $: << File.expand_path("../etc", File.dirname(__FILE__))
 require "common_config"
-require "yaml"		# FIXME: Remove?
+require "date"
 
 class ScannedFilesProcessor
   include CommonConfig
@@ -225,7 +225,6 @@ class ScannedFilesProcessor
 		YYYY must be in range: #{YEAR_RANGE}
 		Must match: #{FILENAME_PARTS_REGEX[idx].inspect}
 	EO_MSG
-
 
       when :bad_trip
 		"#{debug1}TRIPNO is invalid! Must match: #{FILENAME_PARTS_REGEX[idx].inspect}"
