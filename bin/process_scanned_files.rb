@@ -52,6 +52,13 @@ class ScannedFilesProcessor
   KEY_RANGE_NONE = 0..0
   YEAR_RANGE = 1982..2018
 
+  # String describing the type of line in the gap (& overlap) report
+  TYPE_S = {
+    :normal	=> "",		# This range of keys is specified exactly once
+    :gap	=> "gap",	# There is a gap in the list of keys
+    :overlap	=> "overlap",	# There is an overlap in the list of keys
+  }
+
   attr_reader :info_by_mms_id
 
   ############################################################################
@@ -256,16 +263,22 @@ class ScannedFilesProcessor
 
   ############################################################################
   def sort_by_key
-    @fileparts_list.sort!{|a,b|
-      a[:key_range] == b[:key_range] ?
-        a[:date_s] <=> b[:date_s] :
-        a[:key_range].begin <=> b[:key_range].begin
+    [@fileparts_list, @fileparts_no_keys_list].each{|a|
+      a.sort!{|a,b|
+        a[:key_range] == b[:key_range] ?
+          ( a[:date_s] == b[:date_s] ?
+              a[:trip_s] <=> b[:trip_s] :
+              a[:date_s] <=> b[:date_s]
+          ) :
+          a[:key_range].begin <=> b[:key_range].begin
+      }
     }
   end
 
   ############################################################################
+  # List all the keys (one per line) and the associated filename.
   def create_key_csv
-    puts "Creating key CSV file..."
+    puts "Creating key CSV file (#{File.basename(FNAME_KEYS_CSV)}) ..."
     File.open(FNAME_KEYS_CSV, 'w'){|fh|
       fh.puts "key,date,trip,filename"		# CSV header line
       @fileparts_list.each{|p|
@@ -276,8 +289,9 @@ class ScannedFilesProcessor
   end
 
   ############################################################################
+  # List pairs of files which have overlapping keys.
   def create_key_overlap_report
-    puts "Creating key-overlap report..."
+    puts "Creating key-overlap report (#{File.basename(FNAME_KEY_OVERLAP_CSV)}) ..."
     File.open(FNAME_KEY_OVERLAP_CSV, 'w'){|fh|
       fh.puts "overlap_file1,overlap_file2"	# CSV header line
       @fileparts_list.each_with_index{|p1,i|
@@ -293,22 +307,26 @@ class ScannedFilesProcessor
   end
 
   ############################################################################
+  # List key-ranges which have gaps; key-ranges associated with a single
+  # file; and key-ranges associated with multiple files (ie. overlaps).
   def create_key_gap_report
-    puts "Creating key-gap report..."
-    # Assumes @fileparts_list has been sorted numerically by KEY_BEGIN
+    # Overlap lines:
+    # If the key-range of any file A overlaps with that of another file B,
+    # those key-ranges are combined and flagged as an overlap.  If that
+    # combined key range overlaps with yet another in file C, the key-ranges
+    # are combined again. This process is repeated and the resulting
+    # key-range is shown on a single line. Hence there is less detail in
+    # such lines than in the Overlap Report.
+    puts "Creating key-gap report (#{File.basename(FNAME_KEY_GAP_CSV)}) ..."
+    # Assumes @fileparts_list has been sorted numerically by KEY_BEGIN.
     range = nil; type = nil; files = nil
-    type_s = {
-      :normal	=> "",
-      :gap	=> "gap",
-      :overlap	=> "overlap",
-    }
 
     File.open(FNAME_KEY_GAP_CSV, 'w'){|fh|
       fh.puts "key_begin,key_end,gap_overlap,files"		# CSV header line
 
       # We might start with a gap
       if KEY_RANGE.begin < @fileparts_list.first[:key_range].begin
-        fh.puts "%d,%d,%s,%s" % [KEY_RANGE.begin, @fileparts_list.first[:key_range].begin-1, type_s[:gap], ""]
+        fh.puts "%d,%d,%s,%s" % [KEY_RANGE.begin, @fileparts_list.first[:key_range].begin-1, TYPE_S[:gap], ""]
       end
 
       do_next = true
@@ -325,11 +343,11 @@ class ScannedFilesProcessor
 
         elsif range.end+1 == p[:key_range].begin
           # This range continues immediately from old range: Write old range line.
-          fh.puts "%d,%d,%s,%s" % [range.begin, range.end, type_s[type], files.join("|")]
+          fh.puts "%d,%d,%s,%s" % [range.begin, range.end, TYPE_S[type], files.join("|")]
 
         else	# There must be a gap: Write old range line. Write gap line.
-          fh.puts "%d,%d,%s,%s" % [range.begin, range.end, type_s[type], files.join("|")]
-          fh.puts "%d,%d,%s,%s" % [range.end+1, p[:key_range].begin-1, type_s[:gap], ""]
+          fh.puts "%d,%d,%s,%s" % [range.begin, range.end, TYPE_S[type], files.join("|")]
+          fh.puts "%d,%d,%s,%s" % [range.end+1, p[:key_range].begin-1, TYPE_S[:gap], ""]
         end
 
         if do_next
@@ -341,13 +359,26 @@ class ScannedFilesProcessor
       }	# Each
 
       # Write last range
-      fh.puts "%d,%d,%s,%s" % [range.begin, range.end, type_s[type], files.join("|")]
+      fh.puts "%d,%d,%s,%s" % [range.begin, range.end, TYPE_S[type], files.join("|")]
 
       # We might end with a gap
       if @fileparts_list.last[:key_range].end < KEY_RANGE.end
-        fh.puts "%d,%d,%s,%s" % [@fileparts_list.last[:key_range].end+1, KEY_RANGE.end, type_s[:gap], ""]
+        fh.puts "%d,%d,%s,%s" % [@fileparts_list.last[:key_range].end+1, KEY_RANGE.end, TYPE_S[:gap], ""]
       end
     }	# File.open
+  end
+
+  ############################################################################
+  # List the scan files which have no associated keys.
+  def create_no_keys_report
+    puts "Creating no-keys CSV file (#{File.basename(FNAME_NO_KEYS_CSV)}) ..."
+    File.open(FNAME_NO_KEYS_CSV, 'w'){|fh|
+      fh.puts "date,trip,file_without_keys"	# CSV header line
+      @fileparts_no_keys_list.each{|p|
+        # CSV data lines
+        fh.puts "%s,%s,%s" % [p[:date_s], p[:trip_s], p[:whole]]
+      }
+    }
   end
 
   ############################################################################
@@ -363,6 +394,7 @@ class ScannedFilesProcessor
 
     f.create_key_overlap_report
     f.create_key_gap_report
+    f.create_no_keys_report
     #f.create_trip_report
     #f.create_num_pages_report
   end
