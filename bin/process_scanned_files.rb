@@ -59,6 +59,8 @@ class ScannedFilesProcessor
     :overlap	=> "overlap",	# There is an overlap in the list of keys
   }
 
+  PDFINFO_EXE = "/usr/bin/pdfinfo"
+
   attr_reader :info_by_mms_id
 
   ############################################################################
@@ -381,6 +383,51 @@ class ScannedFilesProcessor
   end
 
   ############################################################################
+  # FIXME: It would be nicer to re-write this method using a Ruby library/gem
+  # like https://github.com/yob/pdf-reader; but I am using Ruby 1.8.7 & this
+  # library requires Ruby 2.1.
+  def get_pdf_npages(fpath)
+      cmd = "#{PDFINFO_EXE} \"#{fpath}\" 2>&1"
+      output = %x{ #{cmd} }
+      return nil unless $?.to_s == "0"		# Bad return code from command line
+
+      output.find{|line| line.match(/^Pages:\s+(\d+)/)}
+      npages_s = $1
+      return nil unless npages_s		# No regex match
+      npages_s.to_i
+  end
+
+  ############################################################################
+  def get_expected_npages(fileparts)
+    npages_extra = 2				# 1x Day Sheet; 1x Trip File
+    range = fileparts[:key_range]
+    npages_capture = range == KEY_RANGE_NONE ? 0 : range.end - range.begin + 1
+    npages_capture + npages_extra
+  end
+
+  ############################################################################
+  # For each file, list the actual and expected number of pages
+  def create_num_pages_report
+    puts "Creating number-of-pages CSV file (#{File.basename(FNAME_NUM_PAGES_CSV)}) ..."
+    File.open(FNAME_NUM_PAGES_CSV, 'w'){|fh|
+      fh.puts "filename,actual_npages,expected_npages,comment"	# CSV header line
+      @fileparts_list.each{|p|
+        fpath = "#{IN_SCAN_DIR}/#{p[:whole]}"
+        npages = get_pdf_npages(fpath)
+        npages_expected = get_expected_npages(p)
+
+        fh.puts "%s,%s,%d,%s" % [
+          p[:whole],
+          npages.to_s,
+          npages_expected,
+          !npages ? "Cannot read number of pages. Is the file-type PDF?" :
+            (npages != npages_expected ? "Unexpected number of pages" : "")
+        ]
+      }
+    }
+  end
+
+  ############################################################################
   def self.main
     puts "Process all scanned files"
     puts "========================="
@@ -395,7 +442,7 @@ class ScannedFilesProcessor
     f.create_key_gap_report
     f.create_no_keys_report
     #f.create_trip_report
-    #f.create_num_pages_report
+    f.create_num_pages_report
   end
 end
 
