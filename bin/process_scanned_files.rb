@@ -399,10 +399,10 @@ class ScannedFilesProcessor
 
   ############################################################################
   def get_expected_npages(fileparts)
-    npages_extra = 2				# 1x Day Sheet; 1x Trip File
+    npages_extra = 3				# 2x Day Sheet; 1x Trip File
     range = fileparts[:key_range]
     npages_capture = range == KEY_RANGE_NONE ? 0 : range.end - range.begin + 1
-    npages_capture + npages_extra
+    npages_capture * 2 + npages_extra
   end
 
   ############################################################################
