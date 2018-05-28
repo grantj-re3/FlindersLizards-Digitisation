@@ -20,6 +20,7 @@ module CommonConfig
   FNAME_KEY_OVERLAP_CSV = "#{OUT_DIR}/key_overlap.csv"
   FNAME_KEY_GAP_CSV     = "#{OUT_DIR}/key_gap.csv"
   FNAME_NO_KEYS_CSV     = "#{OUT_DIR}/no_keys.csv"
-  FNAME_NUM_PAGES_CSV   = "#{OUT_DIR}/num_pages.csv"
+  FNAME_NUM_PAGES_EXPECTED_CSV   = "#{OUT_DIR}/num_pages_expected.csv"
+  FNAME_NUM_PAGES_ACTUAL_CSV     = "#{OUT_DIR}/num_pages_actual.csv"
 end
 

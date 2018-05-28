@@ -407,19 +407,22 @@ class ScannedFilesProcessor
 
   ############################################################################
   # For each file, list the actual and expected number of pages
-  def create_num_pages_report
-    puts "Creating number-of-pages CSV file (#{File.basename(FNAME_NUM_PAGES_CSV)}) ..."
-    File.open(FNAME_NUM_PAGES_CSV, 'w'){|fh|
-      fh.puts "filename,actual_npages,expected_npages,comment"	# CSV header line
+  def create_num_pages_report(report_type=:actual)
+    report_type = :expected unless report_type == :actual
+    fname_out = report_type == :actual ? FNAME_NUM_PAGES_ACTUAL_CSV : FNAME_NUM_PAGES_EXPECTED_CSV
+    puts "Creating #{report_type} number-of-pages CSV file (#{File.basename(fname_out)}) ..."
+    File.open(fname_out, 'w'){|fh|
+      fh.puts "filename,actual_npages,%scomment" % [report_type == :actual ? "" : "expected_npages,"]	# CSV header line
+
       @fileparts_list.each{|p|
         fpath = "#{IN_SCAN_DIR}/#{p[:whole]}"
         npages = get_pdf_npages(fpath)
-        npages_expected = get_expected_npages(p)
+        npages_expected = report_type == :actual ? npages : get_expected_npages(p)
 
-        fh.puts "%s,%s,%d,%s" % [
+        fh.puts "%s,%s,%s%s" % [
           p[:whole],
           npages.to_s,
-          npages_expected,
+          report_type == :actual ? "" : "#{npages_expected},",
           !npages ? "Cannot read number of pages. Is the file-type PDF?" :
             (npages != npages_expected ? "Unexpected number of pages" : "")
         ]
@@ -443,6 +446,7 @@ class ScannedFilesProcessor
     f.create_no_keys_report
     #f.create_trip_report
     f.create_num_pages_report
+    f.create_num_pages_report(:expected)
   end
 end
 
