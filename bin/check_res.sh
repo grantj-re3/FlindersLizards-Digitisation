@@ -8,15 +8,24 @@
 # Quick hack!
 # Iterate through all PDFs:
 # - Extract the image on the first page of the PDF
-# - If it is not the expected resolution (A4 @ 600dpi = 7016x4961) then show file details
+# - Extract the resolution of the image
+# - If it is not the expected resolution (A4 @ 600dpi = 7016x4961) then show this in the status
+# - Display the filename and status in a CSV-like format
 #
 ##############################################################################
+delim="|"
+rootname_img="img1"
+fname_img="$rootname_img-000.ppm"
+[ -f  "$fname_img" ] && rm -f "$fname_img"
 
+printf "Filename%sStatus%sImageInfo\n" $delim $delim 	# CSV header line
 for f in ../src/slls_*.pdf; do
-  echo
-  echo "### $f" &&
-    pdfimages -f 1 -l 1 $f page1 &&
-   sum page1-000.ppm &&
-   file page1-000.ppm |egrep -v " size = 7016 x 4961$" # Show res if res is incorrect
+  # Extract first image from PDF; get resolution of the image
+  info=`pdfimages -f 1 -l 1 $f "$rootname_img" && file "$fname_img"`
+  [ -f  "$fname_img" ] && rm -f "$fname_img"
+
+  status="-"
+  if ! echo "$info" |egrep -q " size = 7016 x 4961$"; then status="BadRes"; fi
+  printf "%s%s%s%s%s\n" "`basename $f`" $delim $status $delim "$info"	# CSV data line
 done
 
