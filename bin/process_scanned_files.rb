@@ -281,10 +281,10 @@ class ScannedFilesProcessor
   def create_key_csv
     puts "Creating key CSV file (#{File.basename(FNAME_KEYS_CSV)}) ..."
     File.open(FNAME_KEYS_CSV, 'w'){|fh|
-      fh.puts "key,date,trip,filename"		# CSV header line
+      fh.puts "key,filename,date,trip"		# CSV header line
       @fileparts_list.each{|p|
         # CSV data lines
-        p[:key_range].each{|key| fh.puts "%d,%s,%s,%s" % [key, p[:date_s], p[:trip_s], p[:whole]]}
+        p[:key_range].each{|key| fh.puts "%d,%s,%s,%s" % [key, p[:whole], p[:date_s], p[:trip_s]]}
       }
     }
   end
