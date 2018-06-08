@@ -13,12 +13,18 @@
 # - Display the filename and status in a CSV-like format
 #
 ##############################################################################
-delim="|"
+true="1"
+false=""
+
+delim=","
+use_quote=$true		# If true then wrap every field in double quotes.
+[ "$use_quote" ] && fmt="\"%s\"%s\"%s\"%s\"%s\"\n" || fmt="%s%s%s%s%s\n"  # printf format
+
 rootname_img="img1"
 fname_img="$rootname_img-000.ppm"
 [ -f  "$fname_img" ] && rm -f "$fname_img"
 
-printf "Filename%sStatus%sImageInfo\n" $delim $delim 	# CSV header line
+printf "$fmt" "Filename" $delim "Status" $delim "ImageInfo" 	# CSV header line
 for f in ../src/slls_*.pdf; do
   # Extract first image from PDF; get resolution of the image
   info=`pdfimages -f 1 -l 1 $f "$rootname_img" && file "$fname_img"`
@@ -26,6 +32,10 @@ for f in ../src/slls_*.pdf; do
 
   status="-"
   if ! echo "$info" |egrep -q " size = 7016 x 4961$"; then status="BadRes"; fi
-  printf "%s%s%s%s%s\n" "`basename $f`" $delim $status $delim "$info"	# CSV data line
+
+  # RFC 4180 says a double quote "must be escaped by preceding it with another double quote"
+  [ "$use_quote" ] && csv_info=`echo "$info" |sed 's!"!""!g'` || csv_info="$info"
+
+  printf "$fmt" "`basename $f`" $delim $status $delim "$csv_info"	# CSV data line
 done
 
