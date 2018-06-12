@@ -59,7 +59,7 @@ get_res_status() {
 [ -f  "$fname_img" ] && rm -f "$fname_img"
 
 printf "$fmt" "Filename" $delim "Status" $delim "ImageInfo" 	# CSV header line
-for f in ../src/slls_*.pdf; do
+for f in `dirname $0`/../src/*.pdf; do
   # Extract first image from PDF; get resolution of the image
   info=`pdfimages -f 1 -l 1 $f "$rootname_img" && file "$fname_img"`
   [ -f  "$fname_img" ] && rm -f "$fname_img"
