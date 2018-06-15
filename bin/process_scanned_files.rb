@@ -11,14 +11,45 @@
 #   * Process scan files
 #   * Create CSV file containing key,filename & other misc fields.
 #   * Report key-ranges of: gaps, single files & overlaps (ie. multiple files).
-#   * FUTURE: Report if expected number of pages differs from actual number. Include in CSV.
+#   * Report if expected number of pages differs from actual number.
 #   * FUTURE: Report trip no by year? Eg. Must be different years?
 ##############################################################################
 # Add dirs to the library path
 $: << File.expand_path("../etc", File.dirname(__FILE__))
+$: << File.expand_path("../lib/libext", File.dirname(__FILE__))
+
 require "common_config"
 require "date"
+require 'faster_csv'
 
+##############################################################################
+class FileRegisterInfo
+  DELIM_MISSING_KEY = "|"
+
+  attr_reader :filename, :num_sheets_front, :num_sheets_back,
+    #:num_sheets_body, :num_pages_expected, :num_keys,
+    :num_keys_missing, :ok
+
+  def initialize(line)
+    # FIXME: Consider checking numeric fields with a regex? Interpret "-" as zero.
+    @filename = line["Filename"]
+
+    # Note: 1 sheet = 2 pages if double-sided
+    @num_sheets_front = line["# Day sheets"] ? line["# Day sheets"].to_i : nil
+    @num_sheets_back = line["Trip file"] ? line["Trip file"].to_i : nil
+    #@num_sheets_body = line["# Capture sheets"] ? line["# Capture sheets"].to_i : nil
+    #@num_pages_expected = line["Expected pages"] ? line["Expected pages"].to_i : nil
+
+    #@num_keys = line["No. keys"] ? line["No. keys"].to_i : nil
+    @num_keys_missing = line["Missing Key #"].to_s.split(DELIM_MISSING_KEY).length
+
+    @ok = @filename && @num_sheets_front && @num_sheets_back &&
+      #@num_sheets_body && @num_pages_expected && @num_keys &&
+      @num_keys_missing
+  end
+end
+
+##############################################################################
 class ScannedFilesProcessor
   include CommonConfig
 
@@ -48,9 +79,10 @@ class ScannedFilesProcessor
     /^k(\d+)-(\d+)$/,		# Key range: kNNN-MMM
   ]
 
-  KEY_RANGE = 1..60000
+  # FIXME: Consider sanity check for trip & date (not just year)
+  KEY_RANGE = 1..56392
   KEY_RANGE_NONE = 0..0
-  YEAR_RANGE = 1982..2018
+  YEAR_RANGE = 1982..2017
 
   # String describing the type of line in the gap (& overlap) report
   TYPE_S = {
@@ -61,6 +93,10 @@ class ScannedFilesProcessor
 
   PDFINFO_EXE = "/usr/bin/pdfinfo"
 
+  # Quote & delim chars of the input CSV file
+  QUOTE = '"'
+  DELIM=','
+
   attr_reader :info_by_mms_id
 
   ############################################################################
@@ -69,6 +105,8 @@ class ScannedFilesProcessor
     @fileparts_list = []
     @fileparts_no_keys_list = []
     @bad_fnames = nil
+
+    @file_reg_db = {}		# File-register database (from Lizard filename register )
   end
 
   ############################################################################
@@ -187,8 +225,6 @@ class ScannedFilesProcessor
       [420, :bad_trip,		f_bad_trip,		2],
       [430, :bad_key_range,	f_bad_key_range,	3],
     ]
-#puts "@fileparts_list=#{@fileparts_list.inspect}"
-#puts "@fileparts_no_keys_list=#{@fileparts_no_keys_list.inspect}"
     show_bad_target_filenames
   end
 
@@ -431,6 +467,75 @@ class ScannedFilesProcessor
   end
 
   ############################################################################
+  # Load the filename register (CSV "database") into a hash
+  def load_file_reg_db
+    opts = {
+      :col_sep => DELIM,
+      :headers => true,
+      #:header_converters => :symbol,
+      :quote_char => QUOTE,
+    }
+    unless File.exists?(IN_FNAME_REG_CSV)
+      @file_reg_db = nil
+      return
+    end
+
+    @file_reg_db = {}
+    FasterCSV.foreach(IN_FNAME_REG_CSV, opts) {|line|
+      info = FileRegisterInfo.new(line)
+      f = info.filename
+      @file_reg_db[f] = info unless f.nil? || f.match(/_k-.pdf$/)
+    }
+  end
+
+  ############################################################################
+  # Calculate the number of expected pages (using the least amount of
+  # info from the register as possible)
+  def get_expected_npages_from_file_register(fileparts)
+    # Note: 1 sheet = 2 pages if double-sided
+    fname = fileparts[:whole]
+    return nil unless @file_reg_db && @file_reg_db[fname] && @file_reg_db[fname].ok
+
+    range = fileparts[:key_range]
+    nsheets_capture = range == KEY_RANGE_NONE ? 0 : range.end - range.begin + 1
+
+    # 2x Day Sheet; 1x Trip File
+    npages_extra = @file_reg_db[fname].num_sheets_front * 2 + @file_reg_db[fname].num_sheets_back
+    nsheets_capture * 2 + npages_extra - @file_reg_db[fname].num_keys_missing * 2
+  end
+
+  ############################################################################
+  # For each file, list the actual and expected number of pages (using
+  # the least amount of info from the register as possible)
+  def create_num_pages_report_from_file_register
+    puts "Creating number-of-pages CSV file from file-register (#{File.basename(FNAME_NUM_PAGES_FILE_REG_CSV)}) ..."
+    load_file_reg_db
+    File.open(FNAME_NUM_PAGES_FILE_REG_CSV, 'w'){|fh|
+      ## filename,actual_npages,expected_npages,comment
+      fh.puts "filename,actual_npages,expected_npages,comment"	# CSV header line
+      if @file_reg_db
+        @fileparts_list.each{|p|
+          fpath = "#{IN_SCAN_DIR}/#{p[:whole]}"
+          npages = get_pdf_npages(fpath)
+          npages_expected = get_expected_npages_from_file_register(p)
+          comment = !npages_expected ? "Insufficient info in file-register to calculate expected pages." :
+            (npages != npages_expected ? "Unexpected number of pages" : "")
+
+          fh.puts "%s,%s,%s,%s" % [
+            p[:whole],
+            npages.to_s,
+            npages_expected.to_s,
+            comment
+          ]
+        }
+
+      else
+        fh.puts ",,,\"ERROR: File register '#{File.basename(FNAME_NUM_PAGES_FILE_REG_CSV)}' not found.\""
+      end
+    }
+  end
+
+  ############################################################################
   def self.main
     puts "Process all scanned files"
     puts "========================="
@@ -445,8 +550,10 @@ class ScannedFilesProcessor
     f.create_key_gap_report
     f.create_no_keys_report
     #f.create_trip_report
-    f.create_num_pages_report
-    f.create_num_pages_report(:expected)
+
+    #f.create_num_pages_report
+    #f.create_num_pages_report(:expected)
+    f.create_num_pages_report_from_file_register
   end
 end
 

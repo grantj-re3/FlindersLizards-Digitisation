@@ -13,8 +13,9 @@ module CommonConfig
   TOP_DIR = File.expand_path("..", File.dirname(__FILE__))	# Top level dir
 
   # Directories, files, file extensions, file globs, etc
-  IN_SCAN_DIR     = "#{TOP_DIR}/src"
-  OUT_DIR         = "#{TOP_DIR}/results"
+  IN_SCAN_DIR      = "#{TOP_DIR}/src"
+  IN_FNAME_REG_CSV = "#{IN_SCAN_DIR}/csv/Lizard_file_name_register.csv"
+  OUT_DIR          = "#{TOP_DIR}/results"
 
   FNAME_KEYS_CSV        = "#{OUT_DIR}/keys.csv"
   FNAME_KEY_OVERLAP_CSV = "#{OUT_DIR}/key_overlap.csv"
@@ -22,5 +23,6 @@ module CommonConfig
   FNAME_NO_KEYS_CSV     = "#{OUT_DIR}/no_keys.csv"
   FNAME_NUM_PAGES_EXPECTED_CSV   = "#{OUT_DIR}/num_pages_expected.csv"
   FNAME_NUM_PAGES_ACTUAL_CSV     = "#{OUT_DIR}/num_pages_actual.csv"
+  FNAME_NUM_PAGES_FILE_REG_CSV   = "#{OUT_DIR}/num_pages_file_reg.csv"
 end
 
