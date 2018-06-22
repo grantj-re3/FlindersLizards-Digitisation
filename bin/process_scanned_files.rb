@@ -36,7 +36,7 @@ class FileRegisterInfo
 
     # Note: 1 sheet = 2 pages if double-sided
     @num_sheets_front = line["# Day sheets"] ? line["# Day sheets"].to_i : nil
-    @num_sheets_back = line["Trip file"] ? line["Trip file"].to_i : nil
+    @num_sheets_back = line["# Trip file"] ? line["# Trip file"].to_i : nil
     #@num_sheets_body = line["# Capture sheets"] ? line["# Capture sheets"].to_i : nil
     #@num_pages_expected = line["Expected pages"] ? line["Expected pages"].to_i : nil
 
@@ -52,6 +52,8 @@ end
 ##############################################################################
 class ScannedFilesProcessor
   include CommonConfig
+
+  DEBUG = false
 
   # These parameters allow you to process a subset of scan-files (typically
   # for debugging purposes).
@@ -494,6 +496,13 @@ class ScannedFilesProcessor
   def get_expected_npages_from_file_register(fileparts)
     # Note: 1 sheet = 2 pages if double-sided
     fname = fileparts[:whole]
+    if DEBUG
+      puts
+      puts "  fileparts           : #{fileparts.inspect}"
+      puts "  fname               : #{fname.inspect}"
+      puts "  @file_reg_db[fname] : #{@file_reg_db[fname].inspect}" if @file_reg_db
+    end
+
     return nil unless @file_reg_db && @file_reg_db[fname] && @file_reg_db[fname].ok
 
     range = fileparts[:key_range]
@@ -530,7 +539,7 @@ class ScannedFilesProcessor
         }
 
       else
-        fh.puts ",,,\"ERROR: File register '#{File.basename(FNAME_NUM_PAGES_FILE_REG_CSV)}' not found.\""
+        fh.puts ",,,\"ERROR: File register '#{File.basename(IN_FNAME_REG_CSV)}' not found.\""
       end
     }
   end
