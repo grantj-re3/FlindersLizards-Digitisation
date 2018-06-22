@@ -545,6 +545,28 @@ class ScannedFilesProcessor
   end
 
   ############################################################################
+  # List files where trip numbers have been duplicated
+  def create_trip_dup_report
+    puts "Creating trip-duplicate report (#{File.basename(FNAME_TRIP_DUP_CSV)}) ..."
+
+    files_by_trip = Hash.new()
+    @fileparts_list.each{|parts|
+      files_by_trip[ parts[:trip_s] ]  ||= []
+      files_by_trip[ parts[:trip_s] ] << parts[:whole]
+    }
+    File.open(FNAME_TRIP_DUP_CSV, 'w'){|fh|
+      fh.puts "trip,files_with_duplicate_trip"	# CSV header line
+
+      files_by_trip.sort{|a,b|
+        a[0].to_i == b[0].to_i ?  a[0] <=> b[0] : a[0].to_i <=> b[0].to_i
+      }.each{|trip,list|
+        next unless list.length > 1
+        fh.puts "#{trip},#{list.join("|")}"	# CSV data line
+      }
+    }
+  end
+
+  ############################################################################
   def self.main
     puts "Process all scanned files"
     puts "========================="
@@ -558,6 +580,7 @@ class ScannedFilesProcessor
     f.create_key_overlap_report
     f.create_key_gap_report
     f.create_no_keys_report
+    f.create_trip_dup_report
     #f.create_trip_report
 
     #f.create_num_pages_report
