@@ -81,10 +81,11 @@ class ScannedFilesProcessor
     /^k(\d+)-(\d+)$/,		# Key range: kNNN-MMM
   ]
 
-  # FIXME: Consider sanity check for trip & date (not just year)
+  # FIXME: Consider sanity check for date (not just year)
   KEY_RANGE = 1..56392
   KEY_RANGE_NONE = 0..0
   YEAR_RANGE = 1982..2017
+  TRIP_RANGE = 1..17467
 
   # String describing the type of line in the gap (& overlap) report
   TYPE_S = {
@@ -108,6 +109,7 @@ class ScannedFilesProcessor
     @fileparts_no_keys_list = []
     @bad_fnames = nil
 
+    @files_by_sorted_trip = []
     @file_reg_db = {}		# File-register database (from Lizard filename register )
   end
 
@@ -545,24 +547,67 @@ class ScannedFilesProcessor
   end
 
   ############################################################################
-  # List files where trip numbers have been duplicated
-  def create_trip_dup_report
-    puts "Creating trip-duplicate report (#{File.basename(FNAME_TRIP_DUP_CSV)}) ..."
-
-    files_by_trip = Hash.new()
+  # Prepare data by sorted trip number
+  def prepare_data_by_sorted_trip
+    files_by_trip = {}
     @fileparts_list.each{|parts|
       files_by_trip[ parts[:trip_s] ]  ||= []
       files_by_trip[ parts[:trip_s] ] << parts[:whole]
     }
+    @fileparts_no_keys_list.each{|parts|
+      files_by_trip[ parts[:trip_s] ]  ||= []
+      files_by_trip[ parts[:trip_s] ] << parts[:whole]
+    }
+
+    # Sorted array (which behaves like a hash)
+    @files_by_sorted_trip = files_by_trip.sort{|a,b|
+      a[0].to_i == b[0].to_i ?  a[0] <=> b[0] : a[0].to_i <=> b[0].to_i
+    }
+  end
+
+  ############################################################################
+  # List files where trip numbers have been duplicated
+  def create_trip_dup_report
+    puts "Creating trip-duplicate report (#{File.basename(FNAME_TRIP_DUP_CSV)}) ..."
+
     File.open(FNAME_TRIP_DUP_CSV, 'w'){|fh|
       fh.puts "trip,files_with_duplicate_trip"	# CSV header line
 
-      files_by_trip.sort{|a,b|
-        a[0].to_i == b[0].to_i ?  a[0] <=> b[0] : a[0].to_i <=> b[0].to_i
-      }.each{|trip,list|
+      @files_by_sorted_trip.each{|trip,list|
         next unless list.length > 1
         fh.puts "#{trip},#{list.join("|")}"	# CSV data line
       }
+    }
+  end
+
+  ############################################################################
+  # List gaps in trip number
+  def create_trip_gap_report
+    puts "Creating trip-gap report (#{File.basename(FNAME_TRIP_GAP_CSV)}) ..."
+
+    File.open(FNAME_TRIP_GAP_CSV, 'w'){|fh|
+      fh.puts "trip_begin,trip_end,gap_status"	# CSV header line
+
+      prev_itrip = nil
+      @files_by_sorted_trip.each_with_index{|(trip,list),i|
+        itrip = trip.to_i			# Extract integer prefix
+
+        if i == 0 
+          if itrip > TRIP_RANGE.begin
+            fh.puts "%d,%d,%s" % [TRIP_RANGE.begin, itrip-1, TYPE_S[:gap]]	# CSV data line
+          end
+
+        elsif itrip == prev_itrip
+          next
+
+        elsif itrip != prev_itrip+1
+          fh.puts "%d,%d,%s" % [prev_itrip+1, itrip-1, TYPE_S[:gap]]		# CSV data line
+        end
+        prev_itrip = itrip
+      }
+      if prev_itrip && prev_itrip < TRIP_RANGE.end
+        fh.puts "%d,%d,%s" % [prev_itrip+1, TRIP_RANGE.end, TYPE_S[:gap]]	# CSV data line
+      end
     }
   end
 
@@ -580,8 +625,10 @@ class ScannedFilesProcessor
     f.create_key_overlap_report
     f.create_key_gap_report
     f.create_no_keys_report
+
+    f.prepare_data_by_sorted_trip
     f.create_trip_dup_report
-    #f.create_trip_report
+    f.create_trip_gap_report
 
     #f.create_num_pages_report
     #f.create_num_pages_report(:expected)
