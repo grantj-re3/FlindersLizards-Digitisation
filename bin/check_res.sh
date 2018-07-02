@@ -62,10 +62,18 @@ get_res_status() {
 printf "$fmt" "Filename" $delim "Status" $delim "ImageInfo" 	# CSV header line
 for f in `dirname $0`/../src/*.pdf; do
   # Extract first image from PDF; get resolution of the image
-  info=`pdfimages -f 1 -l 1 $f "$rootname_img" && file "$fname_img"`
+  out=`pdfimages -f 1 -l 1 $f "$rootname_img" 2>&1`
+  res=$?
+  echo "$out" |egrep -iq error
+  has_error_msg=$?
+  [ "$res" = 0 ] && [ "$has_error_msg" != 0 ] && {
+    info=`file "$fname_img"`
+    get_res_status "$info"
+  } || {
+    info=""
+    status="ImageNotFound"
+  }
   [ -f  "$fname_img" ] && rm -f "$fname_img"
-
-  get_res_status "$info"
 
   # RFC 4180 says a double quote "must be escaped by preceding it with another double quote"
   [ "$use_quote" ] && csv_info=`echo "$info" |sed 's!"!""!g'` || csv_info="$info"
