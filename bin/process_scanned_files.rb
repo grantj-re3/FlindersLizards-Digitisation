@@ -41,7 +41,7 @@ class FileRegisterInfo
     #@num_pages_expected = line["Expected pages"] ? line["Expected pages"].to_i : nil
 
     #@num_keys = line["No. keys"] ? line["No. keys"].to_i : nil
-    @num_keys_missing = line["Missing Key #"].to_s.split(DELIM_MISSING_KEY).length
+    @num_keys_missing = line["Missing Key #"].to_s.strip.split(DELIM_MISSING_KEY).length
 
     @ok = @filename && @num_sheets_front && @num_sheets_back &&
       #@num_sheets_body && @num_pages_expected && @num_keys &&
@@ -550,13 +550,11 @@ class ScannedFilesProcessor
   # Prepare data by sorted trip number
   def prepare_data_by_sorted_trip
     files_by_trip = {}
-    @fileparts_list.each{|parts|
-      files_by_trip[ parts[:trip_s] ]  ||= []
-      files_by_trip[ parts[:trip_s] ] << parts[:whole]
-    }
-    @fileparts_no_keys_list.each{|parts|
-      files_by_trip[ parts[:trip_s] ]  ||= []
-      files_by_trip[ parts[:trip_s] ] << parts[:whole]
+    [@fileparts_list, @fileparts_no_keys_list].each{|list|
+      list.each{|parts|
+        files_by_trip[ parts[:trip_s] ]  ||= []
+        files_by_trip[ parts[:trip_s] ] << parts[:whole]
+      }
     }
 
     # Sorted array (which behaves like a hash)

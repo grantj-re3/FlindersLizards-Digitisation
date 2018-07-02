@@ -41,7 +41,8 @@ get_res_status() {
           end
 
           # Main
-          if isWithinPct($F[0], NOM_RES[0]) && isWithinPct($F[1], NOM_RES[1])
+          if isWithinPct($F[0], NOM_RES[0]) && isWithinPct($F[1], NOM_RES[1]) ||
+             isWithinPct($F[0], NOM_RES[1]) && isWithinPct($F[1], NOM_RES[0])
             puts "-"
           else
             puts "BadRes"
