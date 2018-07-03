@@ -43,9 +43,13 @@ The other reports highlight potential issues for further investigation.
 
 Files key_gap.csv, key_overlap.csv, trip_dup.csv and trip_gap.csv
 use *only* the PDF filenames (which encode date, trip and key info)
-to produce the report. In addition, num_pages_file_reg.csv reads
-the number of pages within the CSV and requires a CSV file-register
-in order to produce useful results.
+to produce the report. To produce the num_pages_file_reg.csv report,
+the program also needs to:
+- read the number of pages within the PDF to give the actual_npages
+  column
+- read a CSV file-register (which is a single document with one row
+  of information per PDF) in order to calculate the expected_npages
+  column
 
 ### Usage
 
