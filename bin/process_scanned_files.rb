@@ -529,9 +529,11 @@ class ScannedFilesProcessor
           fpath = "#{IN_SCAN_DIR}/#{p[:whole]}"
           npages = get_pdf_npages(fpath)
           npages_expected = get_expected_npages_from_file_register(p)
-          comment = !npages_expected ? "Insufficient info in file-register to calculate expected pages." :
-            (npages != npages_expected ? "Unexpected number of pages" : "")
-
+          comment = !npages ? "Unable to read number of pages from PDF" : (
+            !npages_expected ? "Insufficient info in file-register to calculate expected pages" : (
+              npages != npages_expected ? "Unexpected number of pages" : ""
+            )
+          )
           fh.puts "%s,%s,%s,%s" % [
             p[:whole],
             npages.to_s,
