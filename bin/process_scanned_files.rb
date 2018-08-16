@@ -502,12 +502,12 @@ class ScannedFilesProcessor
         fh.puts "%s,Filename not found in file-register" % [fname]
 
       elsif !@file_reg_db[fname].ok
-        fh.puts "%s,'# Trip file' column is empty" % [fname] unless @file_reg_db[fname].num_sheets_back
-        fh.puts "%s,'# Day sheets' column is empty" % [fname] unless @file_reg_db[fname].num_sheets_front
+        fh.puts "%s,'# Trip file' field is empty" % [fname] unless @file_reg_db[fname].num_sheets_back
+        fh.puts "%s,'# Day sheets' field is empty" % [fname] unless @file_reg_db[fname].num_sheets_front
 
         # I don't expect these (so messages are poor)
-        fh.puts "%s,'Filename' column is empty/invalid?" % [fname] unless @file_reg_db[fname].filename
-        fh.puts "%s,'Missing Key #' column is invalid?" % [fname] unless @file_reg_db[fname].num_keys_missing
+        fh.puts "%s,'Filename' field is empty/invalid?" % [fname] unless @file_reg_db[fname].filename
+        fh.puts "%s,'Missing Key #' field is invalid?" % [fname] unless @file_reg_db[fname].num_keys_missing
 
       else
         fh.puts "%s,Unknown data issue with file-register" % [fname]
@@ -545,10 +545,11 @@ class ScannedFilesProcessor
   # For each file, list the actual and expected number of pages (using
   # the least amount of info from the register as possible)
   def create_num_pages_report_from_file_register
-    puts "Creating number-of-pages CSV file from file-register (#{File.basename(FNAME_NUM_PAGES_FILE_REG_CSV)}) ..."
+    puts "Creating number-of-pages CSV file from file-register (#{File.basename(FNAME_NUM_PAGES_FILE_REG_CSV)})"
+    puts "  and extra debug info (#{File.basename(FNAME_NUM_PAGES_FILE_REG_EXTRA_CSV)}) ..."
     load_file_reg_db
     File.open(FNAME_NUM_PAGES_FILE_REG_EXTRA_CSV, 'w'){|fh|
-      fh.puts "filename,extra_debug_info"			# CSV header line
+      fh.puts "filename,debug_insufficient_info_msg"			# CSV header line
     }
     File.open(FNAME_NUM_PAGES_FILE_REG_CSV, 'w'){|fh|
       ## filename,actual_npages,expected_npages,comment
