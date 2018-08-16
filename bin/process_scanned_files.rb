@@ -493,6 +493,29 @@ class ScannedFilesProcessor
   end
 
   ############################################################################
+  def report_extra_file_register_info(fname)
+    File.open(FNAME_NUM_PAGES_FILE_REG_EXTRA_CSV, 'a'){|fh|
+      if !@file_reg_db
+        fh.puts "%s,File-register not found" % [fname]
+
+      elsif !@file_reg_db[fname]
+        fh.puts "%s,Filename not found in file-register" % [fname]
+
+      elsif !@file_reg_db[fname].ok
+        fh.puts "%s,'# Trip file' column is empty" % [fname] unless @file_reg_db[fname].num_sheets_back
+        fh.puts "%s,'# Day sheets' column is empty" % [fname] unless @file_reg_db[fname].num_sheets_front
+
+        # I don't expect these (so messages are poor)
+        fh.puts "%s,'Filename' column is empty/invalid?" % [fname] unless @file_reg_db[fname].filename
+        fh.puts "%s,'Missing Key #' column is invalid?" % [fname] unless @file_reg_db[fname].num_keys_missing
+
+      else
+        fh.puts "%s,Unknown data issue with file-register" % [fname]
+      end
+    }
+  end
+
+  ############################################################################
   # Calculate the number of expected pages (using the least amount of
   # info from the register as possible)
   def get_expected_npages_from_file_register(fileparts)
@@ -505,7 +528,10 @@ class ScannedFilesProcessor
       puts "  @file_reg_db[fname] : #{@file_reg_db[fname].inspect}" if @file_reg_db
     end
 
-    return nil unless @file_reg_db && @file_reg_db[fname] && @file_reg_db[fname].ok
+    unless @file_reg_db && @file_reg_db[fname] && @file_reg_db[fname].ok
+      report_extra_file_register_info(fname)
+      return nil
+    end
 
     range = fileparts[:key_range]
     nsheets_capture = range == KEY_RANGE_NONE ? 0 : range.end - range.begin + 1
@@ -521,6 +547,9 @@ class ScannedFilesProcessor
   def create_num_pages_report_from_file_register
     puts "Creating number-of-pages CSV file from file-register (#{File.basename(FNAME_NUM_PAGES_FILE_REG_CSV)}) ..."
     load_file_reg_db
+    File.open(FNAME_NUM_PAGES_FILE_REG_EXTRA_CSV, 'w'){|fh|
+      fh.puts "filename,extra_debug_info"			# CSV header line
+    }
     File.open(FNAME_NUM_PAGES_FILE_REG_CSV, 'w'){|fh|
       ## filename,actual_npages,expected_npages,comment
       fh.puts "filename,actual_npages,expected_npages,comment"	# CSV header line
