@@ -111,6 +111,7 @@ class ScannedFilesProcessor
 
     @files_by_sorted_trip = []
     @file_reg_db = {}		# File-register database (from Lizard filename register )
+    @npages_msg = nil
   end
 
   ############################################################################
@@ -494,25 +495,26 @@ class ScannedFilesProcessor
 
   ############################################################################
   def report_extra_file_register_info(fname)
-    File.open(FNAME_NUM_PAGES_FILE_REG_EXTRA_CSV, 'a'){|fh|
-      if !@file_reg_db
-        fh.puts "%s,File-register not found" % [fname]
+    @npages_msg = if !@file_reg_db
+      "File-register not found"
 
-      elsif !@file_reg_db[fname]
-        fh.puts "%s,Filename not found in file-register" % [fname]
+    elsif !@file_reg_db[fname]
+      "Filename not found in file-register"
 
-      elsif !@file_reg_db[fname].ok
-        fh.puts "%s,'# Trip file' field is empty" % [fname] unless @file_reg_db[fname].num_sheets_back
-        fh.puts "%s,'# Day sheets' field is empty" % [fname] unless @file_reg_db[fname].num_sheets_front
+    elsif !@file_reg_db[fname].ok
+      a = []
+      a << "The following fields are empty/invalid"
 
-        # I don't expect these (so messages are poor)
-        fh.puts "%s,'Filename' field is empty/invalid?" % [fname] unless @file_reg_db[fname].filename
-        fh.puts "%s,'Missing Key #' field is invalid?" % [fname] unless @file_reg_db[fname].num_keys_missing
+      a << "'# Trip file'"   unless @file_reg_db[fname].num_sheets_back
+      a << "'# Day sheets'"  unless @file_reg_db[fname].num_sheets_front
+      a << "'Filename'"      unless @file_reg_db[fname].filename
+      a << "'Missing Key #'" unless @file_reg_db[fname].num_keys_missing
+      a.join("; ")
 
-      else
-        fh.puts "%s,Unknown data issue with file-register" % [fname]
-      end
-    }
+    else
+      "Unknown data issue with file-register"
+
+    end
   end
 
   ############################################################################
@@ -545,22 +547,19 @@ class ScannedFilesProcessor
   # For each file, list the actual and expected number of pages (using
   # the least amount of info from the register as possible)
   def create_num_pages_report_from_file_register
-    puts "Creating number-of-pages CSV file from file-register (#{File.basename(FNAME_NUM_PAGES_FILE_REG_CSV)})"
-    puts "  and extra debug info (#{File.basename(FNAME_NUM_PAGES_FILE_REG_EXTRA_CSV)}) ..."
+    puts "Creating number-of-pages CSV file from file-register (#{File.basename(FNAME_NUM_PAGES_FILE_REG_CSV)}) ..."
     load_file_reg_db
-    File.open(FNAME_NUM_PAGES_FILE_REG_EXTRA_CSV, 'w'){|fh|
-      fh.puts "filename,debug_insufficient_info_msg"			# CSV header line
-    }
     File.open(FNAME_NUM_PAGES_FILE_REG_CSV, 'w'){|fh|
       ## filename,actual_npages,expected_npages,comment
       fh.puts "filename,actual_npages,expected_npages,comment"	# CSV header line
       if @file_reg_db
         @fileparts_list.each{|p|
           fpath = "#{IN_SCAN_DIR}/#{p[:whole]}"
+          @npages_msg = nil
           npages = get_pdf_npages(fpath)
           npages_expected = get_expected_npages_from_file_register(p)
           comment = !npages ? "Unable to read number of pages from PDF" : (
-            !npages_expected ? "Insufficient info in file-register to calculate expected pages" : (
+            !npages_expected ? "CSV problem: #{@npages_msg}" : (
               npages != npages_expected ? "Unexpected number of pages" : ""
             )
           )

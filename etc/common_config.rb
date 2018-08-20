@@ -26,6 +26,5 @@ module CommonConfig
   FNAME_NUM_PAGES_EXPECTED_CSV   = "#{OUT_DIR}/num_pages_expected.csv"
   FNAME_NUM_PAGES_ACTUAL_CSV     = "#{OUT_DIR}/num_pages_actual.csv"
   FNAME_NUM_PAGES_FILE_REG_CSV   = "#{OUT_DIR}/num_pages_file_reg.csv"
-  FNAME_NUM_PAGES_FILE_REG_EXTRA_CSV   = "#{OUT_DIR}/num_pages_file_reg_extra.csv"
 end
 
