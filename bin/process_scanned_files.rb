@@ -558,8 +558,8 @@ class ScannedFilesProcessor
           @npages_msg = nil
           npages = get_pdf_npages(fpath)
           npages_expected = get_expected_npages_from_file_register(p)
-          comment = !npages ? "Unable to read number of pages from PDF" : (
-            !npages_expected ? "CSV problem: #{@npages_msg}" : (
+          comment = !npages_expected ? "CSV problem: #{@npages_msg}" : (
+            !npages ? "Unable to read number of pages from PDF" : (
               npages != npages_expected ? "Unexpected number of pages" : ""
             )
           )
