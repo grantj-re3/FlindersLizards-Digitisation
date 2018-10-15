@@ -111,7 +111,8 @@ class ScannedFilesProcessor
 
     @files_by_sorted_trip = []
     @file_reg_db = {}		# File-register database (from Lizard filename register )
-    @npages_msg = nil
+    @npages_msg_csvprob = nil
+    @npages_msg_expect = nil
   end
 
   ############################################################################
@@ -495,7 +496,7 @@ class ScannedFilesProcessor
 
   ############################################################################
   def report_extra_file_register_info(fname)
-    @npages_msg = if !@file_reg_db
+    @npages_msg_csvprob = if !@file_reg_db
       "File-register not found"
 
     elsif !@file_reg_db[fname]
@@ -538,9 +539,13 @@ class ScannedFilesProcessor
     range = fileparts[:key_range]
     nsheets_capture = range == KEY_RANGE_NONE ? 0 : range.end - range.begin + 1
 
-    # 2x Day Sheet; 1x Trip File
-    npages_extra = @file_reg_db[fname].num_sheets_front * 2 + @file_reg_db[fname].num_sheets_back
-    nsheets_capture * 2 + npages_extra - @file_reg_db[fname].num_keys_missing * 2
+    nfront = @file_reg_db[fname].num_sheets_front
+    nback = @file_reg_db[fname].num_sheets_back
+    nkmissing = @file_reg_db[fname].num_keys_missing
+
+    # 2x Day Sheet; 2x Capture sheets; 1x Trip File
+    @npages_msg_expect = "Expected=Front(#{nfront}x2)+Capture((#{nsheets_capture}-#{nkmissing})x2)+Back(#{nback}x1)"
+    nfront * 2 + (nsheets_capture - nkmissing) * 2 + nback
   end
 
   ############################################################################
@@ -555,12 +560,13 @@ class ScannedFilesProcessor
       if @file_reg_db
         @fileparts_list.each{|p|
           fpath = "#{IN_SCAN_DIR}/#{p[:whole]}"
-          @npages_msg = nil
+          @npages_msg_csvprob = nil
+          @npages_msg_expect = nil
           npages = get_pdf_npages(fpath)
           npages_expected = get_expected_npages_from_file_register(p)
-          comment = !npages_expected ? "CSV problem: #{@npages_msg}" : (
+          comment = !npages_expected ? "CSV problem: #{@npages_msg_csvprob}" : (
             !npages ? "Unable to read number of pages from PDF" : (
-              npages != npages_expected ? "Unexpected number of pages" : ""
+              npages != npages_expected ? "Unexpected number of pages. #{@npages_msg_expect}" : ""
             )
           )
           fh.puts "%s,%s,%s,%s" % [
