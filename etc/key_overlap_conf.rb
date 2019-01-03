@@ -28,13 +28,10 @@ module KeyOverlapConfig
       :comment => MSG_MULTI_FILE,
     },
 
+
     # Key is duplicated within same file
     26458 => {
       :fnames  => %w{slls_d19961008_t1132_k26443-26487.pdf},
-      :comment => MSG_SAME_FILE,
-    },
-    36514 => {
-      :fnames  => %w{slls_d20011008_t1542_k36501-36534.pdf},
       :comment => MSG_SAME_FILE,
     },
     51413 => {
