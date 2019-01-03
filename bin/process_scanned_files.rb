@@ -1,6 +1,6 @@
 #!/usr/bin/ruby
 #
-# Copyright (c) 2018, Flinders University, South Australia. All rights reserved.
+# Copyright (c) 2018-2019, Flinders University, South Australia. All rights reserved.
 # Contributors: Library, Corporate Services, Flinders University.
 # See the accompanying LICENSE file (or http://opensource.org/licenses/BSD-3-Clause).
 #
@@ -19,6 +19,7 @@ $: << File.expand_path("../etc", File.dirname(__FILE__))
 $: << File.expand_path("../lib/libext", File.dirname(__FILE__))
 
 require "common_config"
+require "key_overlap_conf"
 require "date"
 require 'faster_csv'
 
@@ -52,6 +53,7 @@ end
 ##############################################################################
 class ScannedFilesProcessor
   include CommonConfig
+  include KeyOverlapConfig
 
   DEBUG = false
 
@@ -82,7 +84,7 @@ class ScannedFilesProcessor
   ]
 
   # FIXME: Consider sanity check for date (not just year)
-  KEY_RANGE = 1..56392
+  KEY_RANGE = 1..80014
   KEY_RANGE_NONE = 0..0
   YEAR_RANGE = 1982..2017
   TRIP_RANGE = 1..17467
@@ -99,6 +101,9 @@ class ScannedFilesProcessor
   # Quote & delim chars of the input CSV file
   QUOTE = '"'
   DELIM=','
+
+  # Subdelim char for the output CSV file
+  SUBDELIM = "|"
 
   attr_reader :info_by_mms_id
 
@@ -327,6 +332,33 @@ class ScannedFilesProcessor
       @fileparts_list.each{|p|
         # CSV data lines
         p[:key_range].each{|key| fh.puts "%d,%s,%s,%s" % [key, p[:whole], p[:date_s], p[:trip_s]]}
+      }
+    }
+  end
+
+  ############################################################################
+  # List all the keys (one per line) and the associated filename.
+  # Since some keys have been duplicated, we need a different report
+  # from the one above to list one unique-key per line.
+  def create_unique_key_csv
+    puts "Creating unique-key CSV file (#{File.basename(FNAME_UNIQUE_KEYS_CSV)}) ..."
+    File.open(FNAME_UNIQUE_KEYS_CSV, 'w'){|fh|
+      fh.puts "key,filename,date,trip,filenames,filename_comment"	# CSV header line
+      @fileparts_list.each{|p|
+        # CSV data lines
+        p[:key_range].each{|key|
+          if DUP_KEYS.include?(key)
+            unless DUP_KEYS[key][:done]
+              fh.puts "%d,%s,%s,%s,%s,%s" % [key, p[:whole], p[:date_s], p[:trip_s],
+                DUP_KEYS[key][:fnames].join(SUBDELIM), DUP_KEYS[key][:comment]]
+              DUP_KEYS[key][:done] = true
+            end
+
+          else
+            #fh.puts "%d,%s,%s,%s" % [key, p[:whole], p[:date_s], p[:trip_s]]	# For diff with FNAME_KEYS_CSV
+            fh.puts "%d,%s,%s,%s,%s,%s" % [key, p[:whole], p[:date_s], p[:trip_s], p[:whole], ""]
+          end
+        }
       }
     }
   end
@@ -656,6 +688,7 @@ class ScannedFilesProcessor
     f.collect_target_fileparts
     f.sort_by_key
     f.create_key_csv
+    f.create_unique_key_csv
 
     f.create_key_overlap_report
     f.create_key_gap_report

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, Flinders University, South Australia. All rights reserved.
+# Copyright (c) 2018-2019, Flinders University, South Australia. All rights reserved.
 # Contributors: Library, Corporate Services, Flinders University.
 # See the accompanying LICENSE file (or http://opensource.org/licenses/BSD-3-Clause).
 #
@@ -18,6 +18,7 @@ module CommonConfig
   OUT_DIR          = "#{TOP_DIR}/results"
 
   FNAME_KEYS_CSV        = "#{OUT_DIR}/keys.csv"
+  FNAME_UNIQUE_KEYS_CSV = "#{OUT_DIR}/keys_unique.csv"
   FNAME_KEY_OVERLAP_CSV = "#{OUT_DIR}/key_overlap.csv"
   FNAME_KEY_GAP_CSV     = "#{OUT_DIR}/key_gap.csv"
   FNAME_NO_KEYS_CSV     = "#{OUT_DIR}/no_keys.csv"
