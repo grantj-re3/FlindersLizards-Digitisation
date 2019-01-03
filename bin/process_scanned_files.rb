@@ -105,8 +105,6 @@ class ScannedFilesProcessor
   # Subdelim char for the output CSV file
   SUBDELIM = "|"
 
-  attr_reader :info_by_mms_id
-
   ############################################################################
   def initialize
     @target_fnames = []

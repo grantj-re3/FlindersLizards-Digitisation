@@ -29,19 +29,24 @@ are in CSV format and are written to STDOUT. Common usage is:
 The purpose of this script is to produce a variety of spreadsheet reports
 regarding the digitised files.
 
-The keys.csv spreadsheet is information to be merged into
+The keys_unique.csv spreadsheet is information to be merged into
 the researchers' Excel spreadsheet with the VLOOKUP function or similar.
-The keys.csv will be invalid if there are any duplicate keys (as the same
-key will appear more than once in the key/lookup column).
+The keys_unique.csv has been created to ensure that if keys are
+repeated in more than one file, the key will only appear in one row
+(and the associated filenames will be listed in the filenames column of
+that row). The keys_unique.csv file supersedes the keys.csv file (which
+allows duplicate keys to appear more than once in the key/lookup column).
 
 The other reports highlight potential issues for further investigation.
 - key_gap.csv
 - key_overlap.csv
+- no_keys.csv
 - num_pages_file_reg.csv
 - trip_dup.csv
 - trip_gap.csv
 
-Files key_gap.csv, key_overlap.csv, trip_dup.csv and trip_gap.csv
+
+Files key_gap.csv, key_overlap.csv, no_keys.csv, trip_dup.csv and trip_gap.csv
 use *only* the PDF filenames (which encode date, trip and key info)
 to produce the report. To produce the num_pages_file_reg.csv report,
 the program also needs to:
@@ -54,8 +59,8 @@ the program also needs to:
 ### Usage
 
 After confirming you are happy with the configuration in
-etc/common_config.rb, have copied scan files into the src
-folder and have copied the CSV file-register to
+etc/common_config.rb and etc/key_overlap_conf.rb, have copied scan
+files into the src folder and have copied the CSV file-register to
 src/csv/Lizard_file_name_register.csv, the usage is:
 
 ```
@@ -81,4 +86,5 @@ Eg. slls_d19860930_t241_k0-0.pdf
 - Red Hat Enterprise Linux Server release 6.10
 - ruby 1.8.7
 - bash 4.1.2(1)-release
+- pdfinfo 0.12.4
 
